@@ -7,12 +7,6 @@ Identify the count of amounts considered as fraud (should be a lot of
 
 Identify the time of day where fraud is most common
 
-Identify whether fraud activity forms clumps
-
-Differentiate fraud activity between debit and credit
-
-# Combining Data
-
 ``` r
 library(readxl)
 library(readr)
@@ -20,6 +14,8 @@ library(lubridate)
 library(dplyr)
 library(tidyverse)
 ```
+
+# Combining Data
 
 ``` r
 # Step 1: Get a list of all CSV files in the directory
@@ -39,6 +35,184 @@ head(combined_data)
     ## 4 2021-01-01T00:00:05Z       Dr 1500.00     1
     ## 5 2021-01-01T00:00:13Z       Dr  594.94     0
     ## 6 2021-01-01T00:00:25Z       Cr 3641.80     0
+
+# Extracting time data to separate columns
+
+``` r
+data_time <- combined_data %>%
+  mutate(
+    datetime_parsed = ymd_hms(TimeStamp), # Parse the datetime string
+    month = month(datetime_parsed),             # Extract month
+    day = day(datetime_parsed),                 # Extract day
+    hour = hour(datetime_parsed),               # Extract hour
+  ) %>%
+  select(-datetime_parsed)                      # Remove the parsed datetime column
+
+# Print the resulting dataframe
+head(data_time)
+```
+
+    ##              TimeStamp CardType  Amount Fraud month day hour
+    ## 1 2021-01-01T00:00:01Z       Cr 1182.34     0     1   1    0
+    ## 2 2021-01-01T00:00:03Z       Cr 2446.80     0     1   1    0
+    ## 3 2021-01-01T00:00:03Z       Cr  724.40     0     1   1    0
+    ## 4 2021-01-01T00:00:05Z       Dr 1500.00     1     1   1    0
+    ## 5 2021-01-01T00:00:13Z       Dr  594.94     0     1   1    0
+    ## 6 2021-01-01T00:00:25Z       Cr 3641.80     0     1   1    0
+
+# Analyze time of day fraud happens
+
+``` r
+fraudulent_data_time <- data_time %>%
+  filter(Fraud == 1) %>% 
+  select(month, hour, Fraud) %>% 
+  group_by(hour) %>%
+  summarize(fraud_count = n())
+
+print(fraudulent_data_time)
+```
+
+    ## # A tibble: 24 × 2
+    ##     hour fraud_count
+    ##    <int>       <int>
+    ##  1     0        1171
+    ##  2     1        1025
+    ##  3     2        1008
+    ##  4     3        1060
+    ##  5     4         959
+    ##  6     5         959
+    ##  7     6         990
+    ##  8     7        1006
+    ##  9     8        1041
+    ## 10     9         989
+    ## # … with 14 more rows
+
+``` r
+fraudulent_data_time %>% 
+  arrange(desc(fraud_count)) %>%
+  slice_head(n = 5)
+```
+
+    ## # A tibble: 5 × 2
+    ##    hour fraud_count
+    ##   <int>       <int>
+    ## 1     0        1171
+    ## 2    23        1165
+    ## 3    22        1074
+    ## 4     3        1060
+    ## 5    13        1048
+
+``` r
+ggplot(fraudulent_data_time, aes(x = hour, y = fraud_count)) +
+  geom_bar(stat = "identity", fill = "pink") +
+  labs(x = "Hour", y = "Fraud Count") +
+  ggtitle("Total fraudulent debit card transactions for every hour")
+```
+
+![](4---Fraud_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+
+Most fraudulent activities occur during the middle of the night,
+especially in the 23rd and 0th hour
+
+# Is there a difference in the time of day when fraudulent transactions occur between debit and credit cards?
+
+``` r
+credit_fraudulent_data_time <- data_time %>%
+  filter(Fraud == 1, CardType == "Cr") %>% 
+  select(month, hour, Fraud, CardType) %>% 
+  group_by(hour) %>%
+  summarize(fraud_count = n())
+
+print(credit_fraudulent_data_time)
+```
+
+    ## # A tibble: 24 × 2
+    ##     hour fraud_count
+    ##    <int>       <int>
+    ##  1     0         144
+    ##  2     1          74
+    ##  3     2          70
+    ##  4     3          66
+    ##  5     4          65
+    ##  6     5          57
+    ##  7     6          59
+    ##  8     7          73
+    ##  9     8          57
+    ## 10     9          55
+    ## # … with 14 more rows
+
+``` r
+credit_fraudulent_data_time %>% 
+  arrange(desc(fraud_count)) %>% 
+  slice_head(n=5)
+```
+
+    ## # A tibble: 5 × 2
+    ##    hour fraud_count
+    ##   <int>       <int>
+    ## 1     0         144
+    ## 2    23         120
+    ## 3    16          89
+    ## 4    13          87
+    ## 5    22          83
+
+``` r
+credit_fraudulent_data_time %>% 
+  summarize(average_fraud_count = mean(fraud_count))
+```
+
+    ## # A tibble: 1 × 1
+    ##   average_fraud_count
+    ##                 <dbl>
+    ## 1                72.2
+
+``` r
+ggplot(credit_fraudulent_data_time, aes(x = hour, y = fraud_count)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(x = "Hour", y = "Fraud Count") +
+  ggtitle("Total fraudulent credit card transactions for every hour")
+```
+
+![](4---Fraud_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+
+``` r
+debit_fraudulent_data_time <- data_time %>%
+  filter(Fraud == 1, CardType == "Dr") %>% 
+  select(month, hour, Fraud, CardType) %>% 
+  group_by(hour) %>%
+  summarize(fraud_count = n())
+
+ggplot(debit_fraudulent_data_time, aes(x = hour, y = fraud_count)) +
+  geom_bar(stat = "identity", fill = "red") +
+  labs(x = "Hour", y = "Fraud Count") +
+  ggtitle("Total fraudulent debit card transactions for every hour")
+```
+
+![](4---Fraud_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+There is an apparent frequency of credit card fraud during the 23rd and
+0th hour of the day while debit card fraud appears to be more uniformly
+distributed but shows a similar increase in fraudulent transactions at
+the 23rd and 0th hour.
+
+``` r
+fraudulent_month <- data_time %>%
+  filter(Fraud == 1) %>% 
+  select(month, Fraud) %>% 
+  group_by(month) %>%
+  summarize(fraud_count = n())
+
+ggplot(fraudulent_month, aes(x = month, y = fraud_count)) +
+  geom_bar(stat = "identity", fill = "red") +
+  labs(x = "Month", y = "Fraud Count") +
+  ggtitle("Total fraudulent debit card transactions for every hour")
+```
+
+![](4---Fraud_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+Identify whether fraud activity forms clumps
+
+Differentiate fraud activity between debit and credit
 
 # Data Transformation
 
@@ -164,4 +338,30 @@ combined_fraud_data %>%
     ## Scale for y is already present. Adding another scale for y, which will replace
     ## the existing scale.
 
-![](4---Fraud_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](4---Fraud_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+``` r
+combined_fraud_data %>% 
+  mutate(TimeStamp = as.Date(TimeStamp, "%Y-%m-%d")) %>% 
+  mutate("Day" = day(TimeStamp), "Month" = month(TimeStamp)) %>% 
+  group_by(Day,Month) %>% 
+  summarize("Trans_Count" = sum(Fraud == 1)) %>%
+  group_by(Month) %>%
+  summarize("Ave_Trans" = mean(Trans_Count)) %>%
+  ggplot(aes(x = Month, y = Ave_Trans)) +
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(name = "MONTH",
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12),
+                     labels = c("January","Febuary","March","April","May","June"      ,"July","August","September","October","November","December")
+)+
+  scale_y_continuous(name = "AVERAGE MONTHLY TRANSACTIONS")+
+  ylim(0, 150)
+```
+
+    ## `summarise()` has grouped output by 'Day'. You can override using the `.groups`
+    ## argument.
+    ## Scale for y is already present. Adding another scale for y, which will replace
+    ## the existing scale.
+
+![](4---Fraud_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
