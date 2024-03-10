@@ -533,4 +533,4 @@ combined_fraud_data %>%
     ## the existing scale.
 
 ![](4---Fraud_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
->>>>>>> 26bc28edc1d0bbeb1521db00eddad1dbe4a66f2b
+
