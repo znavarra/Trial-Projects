@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 Data on Bank Fraud
 ================
-Zeddrex Navarra
+Author: Zeddrex Navarra
 
 Identify the count of amounts considered as fraud (should be a lot of
 1500)
