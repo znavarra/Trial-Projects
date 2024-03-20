@@ -8,14 +8,16 @@ Identify the count of amounts considered as fraud (should be a lot of
 Identify the time of day where fraud is most common
 <details>
 <summary>View R Code</summary>
-``` r
-library(readxl)
-library(readr)
-library(lubridate)
-library(dplyr)
-library(tidyverse)
-```
+
+    ```r
+    library(readxl)
+    library(readr)
+    library(lubridate)
+    library(dplyr)
+    library(tidyverse)
+    ```
 </details>
+
 
 # Combining Data
 
